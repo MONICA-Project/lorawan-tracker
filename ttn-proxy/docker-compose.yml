@@ -1,0 +1,9 @@
+version: '3'
+services:
+  monica-tracker-proxy:
+    build: .
+    image: monica-tracker-proxy
+    volumes:
+      - ./:/opt/proxy
+    restart: always
+    command: ["python3", "proxy.py", "secrets.json", "datastreams.json"]
