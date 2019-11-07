@@ -15,29 +15,29 @@ logging.basicConfig(level=logging.DEBUG)
 
 # some global variables
 today = "{0:%Y%m%d}".format(datetime.now())
-f_secrets = "secrets.json"
-f_datasteams = "datastreams.json"
 f_logging = today + "_proxy.log"
 
 auth_header = {}
+datastreams = {}
+
 coord_scale = 10000000
 
 def uplink_callback(msg, client):
-    print("Uplink message")
-    print("  FROM: ", msg.dev_id)
-    print("  TIME: ", msg.metadata.time)
-    print("   RAW: ", msg.payload_raw)
+    logging.debug("Uplink message")
+    logging.debug("  FROM: %s", msg.dev_id)
+    logging.debug("  TIME: %s", msg.metadata.time)
+    logging.debug("   RAW: %s", msg.payload_raw)
     with open(f_logging, 'a') as fl:
         print(str(msg), file = fl)
     buf = base64.decodebytes(msg.payload_raw.encode('ascii'))
     # 32 bit, latitude
-    lat_i = ((0xff & buf[0]) << 24) | ((0xff & buf[1]) << 16) | ((0xff & buf[2]) << 8) | (0xff & buf[3] << 0);
+    lat_i = ((0xff & buf[0]) << 24) | ((0xff & buf[1]) << 16) | ((0xff & buf[2]) << 8) | (0xff & buf[3] << 0)
     # 32 bit, longitude
-    lon_i = ((0xff & buf[4]) << 24) | ((0xff & buf[5]) << 16) | ((0xff & buf[6]) << 8) | (0xff & buf[7] << 0);
+    lon_i = ((0xff & buf[4]) << 24) | ((0xff & buf[5]) << 16) | ((0xff & buf[6]) << 8) | (0xff & buf[7] << 0)
     # 16 bit, altitude/height
-    alt = ((0xff & bytes[8]) <<  8) | ((0xff & bytes[9]) << 0)
+    alt = ((0xff & buf[8]) <<  8) | ((0xff & buf[9]) << 0)
     # 8 bit, number of GPS sat
-    sat = (0xff & bytes[10])
+    sat = (0xff & buf[10])
     # convert/scale coordinates to float
     lat = lat_i / coord_scale
     lon = lon_i / coord_scale
@@ -45,9 +45,9 @@ def uplink_callback(msg, client):
     logging.info("  DATA: (%s, %s, %s, %s)", lat, lon, alt, sat)
 
     if msg.dev_id in datastreams:
-        url = datastreams[msg.dev_id][location]
+        url = datastreams[msg.dev_id]['url']
         location = {
-            "name": datastreams[msg.dev_id][name],
+            "name": datastreams[msg.dev_id]['name'],
             "description": "Continuously updated GPS location of tracker device",
             "encodingType": "application/vnd.geo+json",
             "location": {
@@ -135,7 +135,8 @@ def main():
         global datastreams
         datastreams = json.loads(f.read())
 
-    logging.debug("URLS: ", json.dumps(datastreams, indent=2))
+    logging.debug("URLS: %s", datastreams)
+    logging.debug("URLS: %s", json.dumps(datastreams, indent=2))
     with open(f_logging, 'a') as fl:
         print(json.dumps(datastreams), file = fl)
 
