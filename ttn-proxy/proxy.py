@@ -3,6 +3,7 @@ import argparse
 import base64
 import json
 import logging
+import os
 import requests
 import ttn
 
@@ -16,6 +17,7 @@ logging.basicConfig(level=logging.DEBUG)
 # some global variables
 today = "{0:%Y%m%d}".format(datetime.now())
 f_logging = today + "_proxy.log"
+f_refresh_token = "refresh_token.txt"
 
 auth_header = {}
 datastreams = {}
@@ -119,7 +121,14 @@ def main():
     # create auth stuff
     if 'keycloak' in secrets:
         kc = secrets['keycloak']
-        rt = get_refresh_token(kc['url'], kc['id_client'], kc['id_secret'], kc['username'], kc['password'])
+        rt = ''
+        if os.path.isfile(f_refresh_token):
+            with open(f_refresh_token, "r") as rtf:
+                rt = rtf.readlines()
+        if len(rt) == 0:
+            rt = get_refresh_token(kc['url'], kc['id_client'], kc['id_secret'], kc['username'], kc['password'])
+            with open(f_refresh_token, "w") as rtf:
+                rtf.write(rt)
         at = get_access_token(kc['url'], kc['id_client'], kc['id_secret'], rt)
         global auth_header
         auth_header = get_auth_header(at)
@@ -135,7 +144,6 @@ def main():
         global datastreams
         datastreams = json.loads(f.read())
 
-    logging.debug("URLS: %s", datastreams)
     logging.debug("URLS: %s", json.dumps(datastreams, indent=2))
     with open(f_logging, 'a') as fl:
         print(json.dumps(datastreams), file = fl)
